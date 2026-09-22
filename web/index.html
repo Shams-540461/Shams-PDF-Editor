@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Shams PDF Editor: add text, drawings and images to a PDF in your browser.">
+  <meta name="theme-color" content="#103d3b">
+  <title>Shams PDF Editor</title>
+  <style>
+    body { margin:0; background:#f4f7f7; color:#103d3b; font:16px system-ui,sans-serif; }
+    #boot { max-width:34rem; margin:20vh auto; padding:24px; text-align:center; }
+  </style>
+</head>
+<body>
+  <div id="boot" role="status"><h1>Shams PDF Editor</h1><p>Opening your workspace…</p></div>
+  <noscript>This PDF editor needs JavaScript enabled.</noscript>
+  <script>
+    let shamsDirty = false;
+    window.shamsSetDirty = value => { shamsDirty = value; };
+    window.addEventListener('beforeunload', event => {
+      if (shamsDirty) { event.preventDefault(); event.returnValue = ''; }
+    });
+    window.addEventListener('flutter-first-frame', () => document.getElementById('boot')?.remove());
+  </script>
+  <script type="module">
+    try {
+      // Local matched PDF.js + worker files are fetched by tool/prepare_web.dart.
+      const pdfjs = await import('./vendor/pdf.min.mjs');
+      window.pdfjsLib = pdfjs;
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdf.worker.min.mjs', document.baseURI).href;
+      const bootstrap = document.createElement('script');
+      bootstrap.src = 'flutter_bootstrap.js';
+      bootstrap.onerror = () => {
+        document.querySelector('#boot p').textContent = 'The editor could not load. Please refresh or check your connection.';
+      };
+      document.body.appendChild(bootstrap);
+    } catch (error) {
+      document.querySelector('#boot p').textContent = 'The PDF engine could not load. Please refresh or contact the site owner.';
+      console.error('PDF engine bootstrap failed', error);
+    }
+  </script>
+</body>
+</html>

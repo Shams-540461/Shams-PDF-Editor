@@ -1,0 +1,68 @@
+name: Check and publish PDF editor
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      custom_domain:
+        description: 'Use tools.shamswmalik.com (only after configuring Pages and DNS)'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: pdf-pages-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build syncfusion_api/ShamsPdfApi.csproj
+      - run: flutter --version
+      - run: flutter pub get
+      - run: dart tool/prepare_web.dart
+      - run: flutter analyze
+      - run: flutter test
+      - name: Build static website
+        env:
+          CUSTOM_DOMAIN: ${{ inputs.custom_domain }}
+        run: |
+          if [ "$CUSTOM_DOMAIN" = "true" ]; then
+            flutter build web --release --base-href /
+          else
+            flutter build web --release --base-href /myoldprojectph2/
+          fi
+          touch build/web/.nojekyll
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build-and-lockfile
+          path: |
+            build/web/
+            pubspec.lock
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        with:
+          path: build/web
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish site
+        id: deployment
+        uses: actions/deploy-pages@v4
