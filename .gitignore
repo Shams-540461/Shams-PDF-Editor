@@ -1,0 +1,31 @@
+.dart_tool/
+.packages
+build/
+web/vendor/
+*.part
+.idea/
+*.iml
+android/local.properties
+android/key.properties
+*.jks
+*.keystore
+.env
+.DS_Store
+# Keep pubspec.lock once it is generated; this is an application.
+
+backend/.venv/
+__pycache__/
+*.pyc
+
+**/bin/
+**/obj/
+**/appsettings.Development.json
+**/Properties/launchSettings.json
+
+# Supply font assets separately with appropriate embedding rights.
+syncfusion_api/fonts/*.ttf
+
+.flutter-plugins-dependencies
+.env.*
+*.shams
+*.pdf

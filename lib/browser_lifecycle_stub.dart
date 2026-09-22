@@ -1,0 +1,1 @@
+void updateBrowserDirty(bool dirty) {}
