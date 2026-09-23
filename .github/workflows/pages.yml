@@ -39,7 +39,7 @@ jobs:
           if [ "$CUSTOM_DOMAIN" = "true" ]; then
             flutter build web --release --base-href / --dart-define=PDF_TEXT_API=https://shams-pdf-editor.onrender.com/edit
           else
-            flutter build web --release --base-href /shams-pdf-editor/ --dart-define=PDF_TEXT_API=https://shams-pdf-editor.onrender.com/edit
+            flutter build web --release --base-href /Shams-PDF-Editor/ --dart-define=PDF_TEXT_API=https://shams-pdf-editor.onrender.com/edit
           fi
           touch build/web/.nojekyll
       - uses: actions/upload-artifact@v4
