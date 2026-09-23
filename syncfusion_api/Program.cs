@@ -54,6 +54,7 @@ var allowedOrigins = new List<string>
 {
     "http://localhost:8080",
     "http://127.0.0.1:8080",
+    "https://shams-540461.github.io"
 };
 
 if (!string.IsNullOrWhiteSpace(publicWebOrigin))
@@ -81,10 +82,13 @@ app.Use(async (context, next) =>
         var host = context.Request.Host.Host;
         var origin = context.Request.Headers.Origin.ToString();
 
-        if ((host != "localhost" && host != "127.0.0.1") ||
+        if ((host != "localhost" && 
+             host != "127.0.0.1" &&
+             host != "shams-pdf-editor.onrender.com") ||
             (origin.Length > 0 &&
              origin != "http://localhost:8080" &&
-             origin != "http://127.0.0.1:8080"))
+             origin != "http://127.0.0.1:8080" &&
+             origin != "https://shams-540461.github.io"))
         {
             context.Response.StatusCode = 403;
             await context.Response.WriteAsJsonAsync(
