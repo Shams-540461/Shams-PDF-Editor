@@ -152,8 +152,10 @@ app.MapPost("/edit", async Task<IResult> (HttpContext context) =>
             new { error = "Invalid or oversized request." },
             statusCode: 400);
     }
-    catch (Exception)
-    {
+    catch (Exception ex)
+    { 
+        Console.Error.WriteLine($"PDF edit failed: {ex.GetType().Name}: {ex.Message}");
+    
         // Do not expose document contents, local paths or license details.
         return Results.Json(
             new
