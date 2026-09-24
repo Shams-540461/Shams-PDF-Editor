@@ -154,7 +154,7 @@ app.MapPost("/edit", async Task<IResult> (HttpContext context) =>
     }
     catch (Exception ex)
     { 
-        Console.Error.WriteLine($"PDF edit failed: {ex.GetType().Name}: {ex.Message}");
+        Console.Error.WriteLine($"PDF edit failed full exception: {ex}");
     
         // Do not expose document contents, local paths or license details.
         return Results.Json(
