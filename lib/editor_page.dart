@@ -772,6 +772,7 @@ class _OriginalTextDialogState extends State<_OriginalTextDialog> {
           Text('Original font: ${widget.originalFont}'),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _fontMode,
             decoration: const InputDecoration(labelText: 'Replacement font',
               border: OutlineInputBorder()),
