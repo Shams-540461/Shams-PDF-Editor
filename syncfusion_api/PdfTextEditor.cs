@@ -130,6 +130,12 @@ public static class PdfTextEditor
 
         // This is actual removal plus replacement, not a white overlay over old text.
         // The UI explicitly warns that intersecting graphics are removed as well.
+        // Snapshot immutable values before Redact can mutate extracted objects.
+        // Preserve the existing conservative character-and-position check.
+        var expectedOutside = lines.Where((_, id) => id != index)
+            .SelectMany(l => l.WordCollection).SelectMany(w => w.Glyphs)
+            .Where(g => !char.IsWhiteSpace(g.Text))
+            .Select(GlyphIdentity).Order().ToArray();
         page.AddRedaction(new PdfRedaction(bounds, Color.White));
         document.Redact();
         using var removedStream = new MemoryStream();
@@ -142,12 +148,15 @@ public static class PdfTextEditor
         if (survivors.Any(g => Overlaps(g.Bounds, bounds)))
             throw new EditException("The original text could not be removed completely. No edited file was returned.");
         // A removed neighboring line is a hard failure, not a partial success.
-        var expectedOutside = lines.Where((_, id) => id != index)
-            .SelectMany(l => l.WordCollection).SelectMany(w => w.Glyphs)
-            .Where(g => !char.IsWhiteSpace(g.Text)).Select(GlyphIdentity).Order().ToArray();
+
         var actualOutside = survivors.Select(GlyphIdentity).Order().ToArray();
         if (!expectedOutside.SequenceEqual(actualOutside))
-            throw new EditException("The edit affected nearby text. No edited file was returned.");
+        {
+            // Do not return an unvalidated PDF or persist document contents.
+            throw new EditException(
+                "The edit could not safely preserve nearby text. No edited file was returned.");
+        }
+
         if (replacement.Length > 0)
             removedPage.Graphics.DrawString(replacement, font,
                 new PdfSolidBrush(new PdfColor(first.TextColor)),

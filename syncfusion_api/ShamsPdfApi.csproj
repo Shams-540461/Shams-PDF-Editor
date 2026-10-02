@@ -6,7 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.1" />
-    <PackageReference Include="Syncfusion.Pdf.Imaging.Net.Core" Version="34.2.8" />
+    <PackageReference Include="Syncfusion.Pdf.Imaging.Net.Core" Version="34.2.9" />
   </ItemGroup>
   <ItemGroup>
     <None Update="fonts/**/*.ttf" CopyToOutputDirectory="PreserveNewest" />

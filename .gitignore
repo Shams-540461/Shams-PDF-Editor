@@ -29,3 +29,7 @@ syncfusion_api/fonts/*.ttf
 .env.*
 *.shams
 *.pdf
+
+/android/key.properties
+*.jks
+*.keystore
