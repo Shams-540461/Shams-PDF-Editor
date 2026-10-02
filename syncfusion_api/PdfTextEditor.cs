@@ -130,6 +130,21 @@ public static class PdfTextEditor
 
         // This is actual removal plus replacement, not a white overlay over old text.
         // The UI explicitly warns that intersecting graphics are removed as well.
+        // Freeze diagnostic data before Syncfusion modifies the document.
+        var diagnosticBefore = lines.Where((_, id) => id != index)
+            .SelectMany(l => l.WordCollection).SelectMany(w => w.Glyphs)
+            .Where(g => !char.IsWhiteSpace(g.Text))
+            .Select(g => g.Text).Order().ToArray();
+        var diagnosticSnapshot = lines.Select((line, id) => new
+        {
+            id, text = line.Text,
+            bbox = new[] { line.Bounds.X, line.Bounds.Y, line.Bounds.Width, line.Bounds.Height },
+            glyphs = line.WordCollection.SelectMany(w => w.Glyphs).Select(g => new
+            {
+                code = (int)g.Text, font = g.FontName, size = g.FontSize,
+                bbox = new[] { g.Bounds.X, g.Bounds.Y, g.Bounds.Width, g.Bounds.Height }
+            }).ToArray()
+        }).ToArray();
         page.AddRedaction(new PdfRedaction(bounds, Color.White));
         document.Redact();
         using var removedStream = new MemoryStream();
@@ -143,20 +158,79 @@ public static class PdfTextEditor
             throw new EditException("The original text could not be removed completely. No edited file was returned.");
         // A removed neighboring line is a hard failure, not a partial success.
 
-       var expectedOutside = lines.Where((_, id) => id != index)
-           .SelectMany(l => l.WordCollection).SelectMany(w => w.Glyphs)
-           .Where(g => !char.IsWhiteSpace(g.Text)).Select(GlyphIdentity).Order().ToArray();
+       var expectedOutsideText = lines.Where((_, id) => id != index)
+           .SelectMany(l => l.WordCollection)
+           .SelectMany(w => w.Glyphs)
+           .Where(g => !char.IsWhiteSpace(g.Text))
+           .Select(g => g.Text)
+           .Order()
+           .ToArray();
 
-       var actualOutside = survivors.Select(GlyphIdentity).Order().ToArray();
+       var actualOutsideText = survivors
+           .Select(g => g.Text)
+           .Order()
+           .ToArray();
 
-       if (!expectedOutside.SequenceEqual(actualOutside))
-       {
-          Console.Error.WriteLine(
-              $"Nearby-text validation mismatch: expected={expectedOutside.Length}, actual={actualOutside.Length}");
+       if (!expectedOutsideText.SequenceEqual(actualOutsideText))
+        {
+            var beforeCounts = diagnosticBefore.GroupBy(c => c)
+                .ToDictionary(g => g.Key, g => g.Count());
+            var afterCounts = actualOutsideText.GroupBy(c => c)
+                .ToDictionary(g => g.Key, g => g.Count());
+            int missing = beforeCounts.Sum(pair =>
+                Math.Max(0, pair.Value - afterCounts.GetValueOrDefault(pair.Key)));
+            int added = afterCounts.Sum(pair =>
+                Math.Max(0, pair.Value - beforeCounts.GetValueOrDefault(pair.Key)));
+            bool sourceStable = diagnosticBefore.SequenceEqual(expectedOutsideText);
+            var details = $"CV-DIAG-1: expected={diagnosticBefore.Length}, " +
+                $"actual={actualOutsideText.Length}, missing={missing}, " +
+                $"added={added}, sourceStable={sourceStable}";
+            Console.Error.WriteLine(details);
+            // Opt-in LOCAL diagnostics only. Never treat this intermediate PDF
+            // as a successful edit: it has not passed validation.
+            var dumpRoot = Environment.GetEnvironmentVariable("SHAMS_PDF_DIAGNOSTIC_DIR");
+            if (!string.IsNullOrWhiteSpace(dumpRoot))
+            {
+                try
+                {
+                    var dumpDirectory = Path.Combine(Path.GetFullPath(dumpRoot),
+                        "cv-" + Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(dumpDirectory);
+                    File.WriteAllBytes(Path.Combine(dumpDirectory, "before.pdf"), bytes);
+                    File.WriteAllBytes(Path.Combine(dumpDirectory, "redacted-unvalidated.pdf"),
+                        removedStream.ToArray());
+                    var report = new
+                    {
+                        diagnosticVersion = "CV-DIAG-2", details,
+                        page = request.Page, selectedLine = index,
+                        selectedBounds = new[] { bounds.X, bounds.Y, bounds.Width, bounds.Height },
+                        before = diagnosticSnapshot,
+                        after = remaining.TextLine.Select((line, id) => new
+                        {
+                            id, text = line.Text,
+                            bbox = new[] { line.Bounds.X, line.Bounds.Y, line.Bounds.Width, line.Bounds.Height },
+                            glyphs = line.WordCollection.SelectMany(w => w.Glyphs).Select(g => new
+                            {
+                                code = (int)g.Text, font = g.FontName, size = g.FontSize,
+                                bbox = new[] { g.Bounds.X, g.Bounds.Y, g.Bounds.Width, g.Bounds.Height }
+                            }).ToArray()
+                        }).ToArray()
+                    };
+                    File.WriteAllText(Path.Combine(dumpDirectory, "report.json"),
+                        System.Text.Json.JsonSerializer.Serialize(report,
+                            new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                    Console.Error.WriteLine("CV-DIAG-2 saved locally: " + dumpDirectory);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
+                    ArgumentException or NotSupportedException or System.Text.Json.JsonException)
+                {
+                    Console.Error.WriteLine("CV-DIAG-2 could not save diagnostics: " + ex.GetType().Name);
+                }
+            }
+            throw new EditException(
+                "The edit affected nearby text. No edited file was returned. " + details);
+        }
 
-          throw new EditException(
-              "The edit affected nearby text. No edited file was returned.");
-      }
         if (replacement.Length > 0)
             removedPage.Graphics.DrawString(replacement, font,
                 new PdfSolidBrush(new PdfColor(first.TextColor)),
