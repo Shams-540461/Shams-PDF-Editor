@@ -150,9 +150,24 @@ public static class PdfTextEditor
         // A removed neighboring line is a hard failure, not a partial success.
 
         var actualOutside = survivors.Select(GlyphIdentity).Order().ToArray();
+
         if (!expectedOutside.SequenceEqual(actualOutside))
         {
-            // Do not return an unvalidated PDF or persist document contents.
+            var expectedChars = expectedOutside
+                .Select(x => x.Split(':')[0])
+                .Order()
+                .ToArray();
+
+            var actualChars = actualOutside
+                .Select(x => x.Split(':')[0])
+                .Order()
+                .ToArray();
+
+            Console.Error.WriteLine(
+                $"Preservation diagnostic: Expected={expectedOutside.Length}, " +
+                $"Actual={actualOutside.Length}, " +
+                $"SameCharacters={expectedChars.SequenceEqual(actualChars)}");
+
             throw new EditException(
                 "The edit could not safely preserve nearby text. No edited file was returned.");
         }
