@@ -106,7 +106,7 @@ app.MapGet("/health", () => Results.Json(new
 {
     status = "ready",
     engine = "Syncfusion .NET",
-    version = "34.2.8",
+    version = "35.1.40",
     licenseKeyLoaded = true
 }));
 
@@ -161,7 +161,7 @@ app.MapPost("/edit", async Task<IResult> (HttpContext context) =>
             new
             {
                 error =
-                    "Syncfusion could not process this PDF. No edited file was returned. Check that the PDF is valid and the Document SDK trial matches version 34.2.8."
+                    "Syncfusion could not process this PDF. No edited file was returned. Check that the PDF is valid and the Document SDK trial matches version 35.1.40."
             },
             statusCode: 422);
     }
